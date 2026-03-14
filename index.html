@@ -370,12 +370,56 @@
 <script>
 const TODAY = (() => { const d = new Date(); d.setHours(0,0,0,0); return d; })();
 
-function game(date, time, team, opp, home, venue) {
+// Convert a local time in a given IANA timezone to a UTC Date object
+function createZonedDate(dateStr, timeStr, tz) {
+  const m = timeStr.match(/(\d+):(\d+)\s*(AM|PM)/i);
+  let h = parseInt(m[1]);
+  const min = parseInt(m[2]);
+  const ampm = m[3].toUpperCase();
+  if (ampm === 'PM' && h !== 12) h += 12;
+  if (ampm === 'AM' && h === 12) h = 0;
+
+  // Probe: treat the local time as UTC initially
+  const probe = new Date(Date.UTC(
+    parseInt(dateStr.slice(0,4)),
+    parseInt(dateStr.slice(5,7)) - 1,
+    parseInt(dateStr.slice(8,10)),
+    h, min, 0
+  ));
+
+  // Find what the probe looks like in the target timezone
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: tz,
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+    hour12: false
+  }).formatToParts(probe).reduce((acc, {type, value}) => { acc[type] = value; return acc; }, {});
+
+  const tzDate = new Date(Date.UTC(
+    parseInt(parts.year), parseInt(parts.month) - 1, parseInt(parts.day),
+    parseInt(parts.hour) % 24, parseInt(parts.minute), parseInt(parts.second)
+  ));
+
+  // Adjust probe by the difference to get true UTC
+  return new Date(probe.getTime() + (probe.getTime() - tzDate.getTime()));
+}
+
+// Format a Date in the browser's local timezone, e.g. "4:30 PM MDT"
+function formatLocalTime(date) {
+  return date.toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+    timeZoneName: 'short'
+  });
+}
+
+function game(date, time, tz, team, opp, home, venue) {
   const d = new Date(date + 'T00:00:00');
+  const gameDateTime = createZonedDate(date, time, tz);
   return {
     date: d,
     dateKey: date,
-    time,
+    gameDateTime,
     team,         // 'summit' | 'stlcity'
     opp,
     home,
@@ -391,58 +435,58 @@ function game(date, time, team, opp, home, venue) {
 
 // ── DENVER SUMMIT FC · 2026 NWSL ─────────────────────────────────────
 const SUMMIT = [
-  game('2026-03-14','4:30 PM MT',  'summit','Bay FC',               false,'PayPal Park · San Jose, CA'),
-  game('2026-03-20','6:00 PM MT',  'summit','Orlando Pride',         false,'Inter&Co Stadium · Orlando, FL'),
-  game('2026-03-25','5:30 PM MT',  'summit','Gotham FC',             false,'SI Stadium · Harrison, NJ'),
-  game('2026-03-28','12:00 PM MT', 'summit','Washington Spirit',      true, 'Empower Field at Mile High'),
-  game('2026-04-04','6:45 PM MT',  'summit','Seattle Reign',         false,'ONE Spokane Stadium'),
-  game('2026-04-25','6:45 PM MT',  'summit','San Diego Wave FC',      true, "DICK'S Sporting Goods Park"),
-  game('2026-05-03','1:00 PM MT',  'summit','Boston Legacy FC',      false,'Gillette Stadium · Foxborough, MA'),
-  game('2026-05-16','6:45 PM MT',  'summit','Orlando Pride',          true, "DICK'S Sporting Goods Park"),
-  game('2026-07-03','7:30 PM MT',  'summit','Kansas City Current',    true, 'Centennial Stadium'),
-  game('2026-07-12','5:00 PM MT',  'summit','Houston Dash',           true, 'Centennial Stadium'),
-  game('2026-07-18','12:00 PM MT', 'summit','Portland Thorns',        true, 'Centennial Stadium'),
-  game('2026-08-02','7:00 PM MT',  'summit','Boston Legacy FC',       true, 'Centennial Stadium'),
-  game('2026-08-05','8:00 PM MT',  'summit','North Carolina Courage', true, 'Centennial Stadium'),
-  game('2026-08-08','2:00 PM MT',  'summit','Utah Royals',            true, 'Centennial Stadium'),
-  game('2026-08-14','7:00 PM MT',  'summit','San Diego Wave FC',     false,'Snapdragon Stadium · San Diego, CA'),
-  game('2026-09-19','6:45 PM MT',  'summit','Seattle Reign FC',       true, 'Centennial Stadium'),
-  game('2026-09-26','11:30 AM MT', 'summit','Kansas City Current',   false,'CPKC Stadium · Kansas City'),
-  game('2026-10-04','3:00 PM MT',  'summit','Chicago Stars',         false,'Northwestern Medicine Field'),
-  game('2026-10-17','6:45 PM MT',  'summit','Angel City FC',          true, 'Centennial Stadium'),
-  game('2026-10-24','4:30 PM MT',  'summit','Racing Louisville FC',   true, 'Centennial Stadium'),
-  game('2026-11-01','5:00 PM MT',  'summit','North Carolina Courage', false,'First Horizon Stadium · Cary, NC'),
+  game('2026-03-14','4:30 PM', 'America/Denver', 'summit','Bay FC',               false,'PayPal Park · San Jose, CA'),
+  game('2026-03-20','6:00 PM', 'America/Denver', 'summit','Orlando Pride',         false,'Inter&Co Stadium · Orlando, FL'),
+  game('2026-03-25','5:30 PM', 'America/Denver', 'summit','Gotham FC',             false,'SI Stadium · Harrison, NJ'),
+  game('2026-03-28','12:00 PM','America/Denver', 'summit','Washington Spirit',      true, 'Empower Field at Mile High'),
+  game('2026-04-04','6:45 PM', 'America/Denver', 'summit','Seattle Reign',         false,'ONE Spokane Stadium'),
+  game('2026-04-25','6:45 PM', 'America/Denver', 'summit','San Diego Wave FC',      true, "DICK'S Sporting Goods Park"),
+  game('2026-05-03','1:00 PM', 'America/Denver', 'summit','Boston Legacy FC',      false,'Gillette Stadium · Foxborough, MA'),
+  game('2026-05-16','6:45 PM', 'America/Denver', 'summit','Orlando Pride',          true, "DICK'S Sporting Goods Park"),
+  game('2026-07-03','7:30 PM', 'America/Denver', 'summit','Kansas City Current',    true, 'Centennial Stadium'),
+  game('2026-07-12','5:00 PM', 'America/Denver', 'summit','Houston Dash',           true, 'Centennial Stadium'),
+  game('2026-07-18','12:00 PM','America/Denver', 'summit','Portland Thorns',        true, 'Centennial Stadium'),
+  game('2026-08-02','7:00 PM', 'America/Denver', 'summit','Boston Legacy FC',       true, 'Centennial Stadium'),
+  game('2026-08-05','8:00 PM', 'America/Denver', 'summit','North Carolina Courage', true, 'Centennial Stadium'),
+  game('2026-08-08','2:00 PM', 'America/Denver', 'summit','Utah Royals',            true, 'Centennial Stadium'),
+  game('2026-08-14','7:00 PM', 'America/Denver', 'summit','San Diego Wave FC',     false,'Snapdragon Stadium · San Diego, CA'),
+  game('2026-09-19','6:45 PM', 'America/Denver', 'summit','Seattle Reign FC',       true, 'Centennial Stadium'),
+  game('2026-09-26','11:30 AM','America/Denver', 'summit','Kansas City Current',   false,'CPKC Stadium · Kansas City'),
+  game('2026-10-04','3:00 PM', 'America/Denver', 'summit','Chicago Stars',         false,'Northwestern Medicine Field'),
+  game('2026-10-17','6:45 PM', 'America/Denver', 'summit','Angel City FC',          true, 'Centennial Stadium'),
+  game('2026-10-24','4:30 PM', 'America/Denver', 'summit','Racing Louisville FC',   true, 'Centennial Stadium'),
+  game('2026-11-01','5:00 PM', 'America/Denver', 'summit','North Carolina Courage', false,'First Horizon Stadium · Cary, NC'),
 ];
 
 // ── STL CITY SC · 2026 MLS ───────────────────────────────────────────
 const STL = [
-  game('2026-02-21','1:30 PM CT',  'stlcity','Charlotte FC',          true, 'Energizer Park · St. Louis'),
-  game('2026-03-01','3:00 PM CT',  'stlcity','San Diego FC',          false,'Snapdragon Stadium · San Diego'),
-  game('2026-03-08','4:00 PM CT',  'stlcity','Seattle Sounders',      false,'Lumen Field · Seattle'),
-  game('2026-03-14','7:00 PM CT',  'stlcity','LAFC',                  false,'BMO Stadium · Los Angeles'),
-  game('2026-03-21','7:30 PM CT',  'stlcity','New England Revolution', true, 'Energizer Park · St. Louis'),
-  game('2026-03-28','7:00 PM CT',  'stlcity','NYCFC',                 false,'Yankee Stadium · New York'),
-  game('2026-04-04','7:30 PM CT',  'stlcity','FC Dallas',             false,'Toyota Stadium · Frisco, TX'),
-  game('2026-04-11','8:00 PM CT',  'stlcity','Seattle Sounders',      false,'Lumen Field · Seattle'),
-  game('2026-04-18','7:30 PM CT',  'stlcity','Inter Miami CF',         true, 'Energizer Park · St. Louis'),
-  game('2026-04-25','7:30 PM CT',  'stlcity','Sporting KC',            true, 'Energizer Park · St. Louis'),
-  game('2026-05-02','7:30 PM CT',  'stlcity','Austin FC',              true, 'Energizer Park · St. Louis'),
-  game('2026-05-09','7:30 PM CT',  'stlcity','Colorado Rapids',       false,"DICK'S Sporting Goods Park"),
-  game('2026-05-16','7:30 PM CT',  'stlcity','CF Montréal',            true, 'Energizer Park · St. Louis'),
-  game('2026-05-23','7:30 PM CT',  'stlcity','Austin FC',              true, 'Energizer Park · St. Louis'),
-  game('2026-07-16','7:30 PM CT',  'stlcity','Sporting KC',            true, 'Energizer Park · St. Louis'),
-  game('2026-07-25','7:30 PM CT',  'stlcity','Atlanta United',         true, 'Energizer Park · St. Louis'),
-  game('2026-08-01','7:30 PM CT',  'stlcity','New York Red Bulls',    false,'Red Bull Arena · Harrison, NJ'),
-  game('2026-08-08','7:30 PM CT',  'stlcity','Columbus Crew',          true, 'Energizer Park · St. Louis'),
-  game('2026-08-15','7:30 PM CT',  'stlcity','Portland Timbers',       true, 'Energizer Park · St. Louis'),
-  game('2026-08-22','7:30 PM CT',  'stlcity','LA Galaxy',             false,'Dignity Health Sports Park · Carson, CA'),
-  game('2026-08-29','7:30 PM CT',  'stlcity','FC Cincinnati',          true, 'Energizer Park · St. Louis'),
-  game('2026-09-12','7:30 PM CT',  'stlcity','Nashville SC',          false,'GEODIS Park · Nashville'),
-  game('2026-09-19','7:30 PM CT',  'stlcity','Minnesota United',       true, 'Energizer Park · St. Louis'),
-  game('2026-09-26','7:30 PM CT',  'stlcity','Chicago Fire',          false,'Wrigley Field · Chicago'),
-  game('2026-10-03','7:30 PM CT',  'stlcity','Houston Dynamo',         true, 'Energizer Park · St. Louis'),
-  game('2026-10-10','7:30 PM CT',  'stlcity','Vancouver Whitecaps',   false,'BC Place · Vancouver'),
-  game('2026-10-17','7:30 PM CT',  'stlcity','San Jose Earthquakes',   true, 'Energizer Park · St. Louis'),
+  game('2026-02-21','1:30 PM', 'America/Chicago', 'stlcity','Charlotte FC',          true, 'Energizer Park · St. Louis'),
+  game('2026-03-01','3:00 PM', 'America/Chicago', 'stlcity','San Diego FC',          false,'Snapdragon Stadium · San Diego'),
+  game('2026-03-08','4:00 PM', 'America/Chicago', 'stlcity','Seattle Sounders',      false,'Lumen Field · Seattle'),
+  game('2026-03-14','7:00 PM', 'America/Chicago', 'stlcity','LAFC',                  false,'BMO Stadium · Los Angeles'),
+  game('2026-03-21','7:30 PM', 'America/Chicago', 'stlcity','New England Revolution', true, 'Energizer Park · St. Louis'),
+  game('2026-03-28','7:00 PM', 'America/Chicago', 'stlcity','NYCFC',                 false,'Yankee Stadium · New York'),
+  game('2026-04-04','7:30 PM', 'America/Chicago', 'stlcity','FC Dallas',             false,'Toyota Stadium · Frisco, TX'),
+  game('2026-04-11','8:00 PM', 'America/Chicago', 'stlcity','Seattle Sounders',      false,'Lumen Field · Seattle'),
+  game('2026-04-18','7:30 PM', 'America/Chicago', 'stlcity','Inter Miami CF',         true, 'Energizer Park · St. Louis'),
+  game('2026-04-25','7:30 PM', 'America/Chicago', 'stlcity','Sporting KC',            true, 'Energizer Park · St. Louis'),
+  game('2026-05-02','7:30 PM', 'America/Chicago', 'stlcity','Austin FC',              true, 'Energizer Park · St. Louis'),
+  game('2026-05-09','7:30 PM', 'America/Chicago', 'stlcity','Colorado Rapids',       false,"DICK'S Sporting Goods Park"),
+  game('2026-05-16','7:30 PM', 'America/Chicago', 'stlcity','CF Montréal',            true, 'Energizer Park · St. Louis'),
+  game('2026-05-23','7:30 PM', 'America/Chicago', 'stlcity','Austin FC',              true, 'Energizer Park · St. Louis'),
+  game('2026-07-16','7:30 PM', 'America/Chicago', 'stlcity','Sporting KC',            true, 'Energizer Park · St. Louis'),
+  game('2026-07-25','7:30 PM', 'America/Chicago', 'stlcity','Atlanta United',         true, 'Energizer Park · St. Louis'),
+  game('2026-08-01','7:30 PM', 'America/Chicago', 'stlcity','New York Red Bulls',    false,'Red Bull Arena · Harrison, NJ'),
+  game('2026-08-08','7:30 PM', 'America/Chicago', 'stlcity','Columbus Crew',          true, 'Energizer Park · St. Louis'),
+  game('2026-08-15','7:30 PM', 'America/Chicago', 'stlcity','Portland Timbers',       true, 'Energizer Park · St. Louis'),
+  game('2026-08-22','7:30 PM', 'America/Chicago', 'stlcity','LA Galaxy',             false,'Dignity Health Sports Park · Carson, CA'),
+  game('2026-08-29','7:30 PM', 'America/Chicago', 'stlcity','FC Cincinnati',          true, 'Energizer Park · St. Louis'),
+  game('2026-09-12','7:30 PM', 'America/Chicago', 'stlcity','Nashville SC',          false,'GEODIS Park · Nashville'),
+  game('2026-09-19','7:30 PM', 'America/Chicago', 'stlcity','Minnesota United',       true, 'Energizer Park · St. Louis'),
+  game('2026-09-26','7:30 PM', 'America/Chicago', 'stlcity','Chicago Fire',          false,'Wrigley Field · Chicago'),
+  game('2026-10-03','7:30 PM', 'America/Chicago', 'stlcity','Houston Dynamo',         true, 'Energizer Park · St. Louis'),
+  game('2026-10-10','7:30 PM', 'America/Chicago', 'stlcity','Vancouver Whitecaps',   false,'BC Place · Vancouver'),
+  game('2026-10-17','7:30 PM', 'America/Chicago', 'stlcity','San Jose Earthquakes',   true, 'Energizer Park · St. Louis'),
 ];
 
 const ALL = [...SUMMIT, ...STL].sort((a,b) => a.date - b.date);
@@ -481,7 +525,7 @@ function renderNextUp(games) {
       <div class="nc-opp">${g.matchup}</div>
       <div class="nc-meta">
         ${g.dayShort}, ${g.date.toLocaleDateString('en-US',{month:'short',day:'numeric'})}<br>
-        ${g.time}
+        ${formatLocalTime(g.gameDateTime)}
       </div>
       <span class="nc-ha ${g.home ? 'home' : 'away'}">${g.home ? 'Home' : 'Away'}</span>
     </div>
@@ -524,7 +568,7 @@ function render() {
           ${g.isToday ? '<span class="today-badge">TODAY</span>' : ''}
         </div>
         <div class="meta-col">
-          <div class="time">${g.time}</div>
+          <div class="time">${formatLocalTime(g.gameDateTime)}</div>
           <span class="ha-tag ${g.home ? 'home' : 'away'}">${g.home ? 'Home' : 'Away'}</span>
         </div>
       </div>
