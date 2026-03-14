@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My Soccer Schedule</title>
+  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0f0f14;
+      color: #e8e8e8;
+      min-height: 100vh;
+    }
+
+    header {
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      padding: 20px 16px 16px;
+      border-bottom: 1px solid #2a2a3e;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    header h1 {
+      font-size: 1.4rem;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      margin-bottom: 14px;
+    }
+
+    .filters {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .filter-btn {
+      padding: 6px 14px;
+      border-radius: 20px;
+      border: 2px solid transparent;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+      background: #2a2a3e;
+      color: #aaa;
+    }
+
+    .filter-btn.active-all   { background: #4a4a6a; color: #fff; border-color: #6a6aaa; }
+    .filter-btn.active-nwsl  { background: #1a3a6a; color: #fff; border-color: #3a6acb; }
+    .filter-btn.active-mls   { background: #6a1a1a; color: #fff; border-color: #cb3a3a; }
+    .filter-btn.active-home  { background: #1a5a1a; color: #fff; border-color: #3acb3a; }
+
+    .filter-btn:hover { opacity: 0.85; }
+
+    .schedule {
+      padding: 12px 12px 24px;
+      max-width: 700px;
+      margin: 0 auto;
+    }
+
+    .month-group { margin-bottom: 8px; }
+
+    .month-label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: #666;
+      padding: 12px 4px 6px;
+    }
+
+    .game-card {
+      background: #1a1a2e;
+      border-radius: 12px;
+      padding: 14px 14px;
+      margin-bottom: 8px;
+      display: grid;
+      grid-template-columns: 56px 1fr auto;
+      gap: 12px;
+      align-items: center;
+      border-left: 4px solid transparent;
+      position: relative;
+      transition: transform 0.1s;
+    }
+
+    .game-card:active { transform: scale(0.99); }
+
+    .game-card.summit  { border-left-color: #3a6acb; }
+    .game-card.stlcity { border-left-color: #cb3a3a; }
+    .game-card.past    { opacity: 0.45; }
+
+    .date-block {
+      text-align: center;
+      line-height: 1.1;
+    }
+
+    .date-block .day-num {
+      font-size: 1.5rem;
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    .date-block .day-name {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #888;
+    }
+
+    .date-block .month-short {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #888;
+    }
+
+    .game-info { min-width: 0; }
+
+    .team-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 0.65rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-bottom: 3px;
+    }
+
+    .badge-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .summit  .badge-dot { background: #3a6acb; }
+    .stlcity .badge-dot { background: #cb3a3a; }
+
+    .summit  .team-badge  { color: #6a9aeb; }
+    .stlcity .team-badge  { color: #eb6a6a; }
+
+    .matchup {
+      font-size: 0.95rem;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .venue {
+      font-size: 0.72rem;
+      color: #777;
+      margin-top: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .right-col {
+      text-align: right;
+      flex-shrink: 0;
+    }
+
+    .time {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #bbb;
+    }
+
+    .home-away {
+      display: inline-block;
+      font-size: 0.6rem;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      margin-top: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .tag-home { background: #1a4a1a; color: #5de05d; }
+    .tag-away { background: #2a2a2a; color: #888; }
+
+    .today-marker {
+      font-size: 0.6rem;
+      font-weight: 700;
+      color: #f0c040;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-top: 2px;
+      display: block;
+    }
+
+    .empty {
+      text-align: center;
+      color: #555;
+      padding: 40px 20px;
+      font-size: 0.9rem;
+    }
+
+    .legend {
+      display: flex;
+      gap: 16px;
+      padding: 0 12px 12px;
+      max-width: 700px;
+      margin: 0 auto;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.72rem;
+      color: #888;
+    }
+
+    .legend-bar {
+      width: 14px;
+      height: 14px;
+      border-radius: 3px;
+    }
+
+    .legend-bar.summit  { background: #3a6acb; }
+    .legend-bar.stlcity { background: #cb3a3a; }
+  </style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1>⚽ My Soccer Schedule</h1>
+    <div class="filters">
+      <button class="filter-btn" :class="{ 'active-all': filter === 'all' }"    @click="filter='all'">All Games</button>
+      <button class="filter-btn" :class="{ 'active-nwsl': filter === 'summit' }" @click="filter='summit'">Denver Summit</button>
+      <button class="filter-btn" :class="{ 'active-mls': filter === 'stlcity' }" @click="filter='stlcity'">STL City</button>
+      <button class="filter-btn" :class="{ 'active-home': filter === 'home' }"  @click="filter='home'">Home Only</button>
+    </div>
+  </header>
+
+  <div class="legend">
+    <div class="legend-item"><div class="legend-bar summit"></div> Denver Summit FC (NWSL)</div>
+    <div class="legend-item"><div class="legend-bar stlcity"></div> STL City SC (MLS)</div>
+  </div>
+
+  <div class="schedule">
+    <template v-if="filteredGrouped.length === 0">
+      <div class="empty">No games match this filter.</div>
+    </template>
+    <template v-for="group in filteredGrouped" :key="group.month">
+      <div class="month-group">
+        <div class="month-label">{{ group.month }}</div>
+        <div
+          v-for="game in group.games"
+          :key="game.id"
+          class="game-card"
+          :class="[game.team, { past: game.isPast }]"
+        >
+          <div class="date-block">
+            <div class="day-num">{{ game.dayNum }}</div>
+            <div class="day-name">{{ game.dayName }}</div>
+            <div class="month-short">{{ game.monthShort }}</div>
+          </div>
+          <div class="game-info">
+            <div class="team-badge">
+              <span class="badge-dot"></span>
+              {{ game.team === 'summit' ? 'Denver Summit FC' : 'STL City SC' }}
+            </div>
+            <div class="matchup">{{ game.matchup }}</div>
+            <div class="venue">{{ game.venue }}</div>
+            <span v-if="game.isToday" class="today-marker">TODAY</span>
+          </div>
+          <div class="right-col">
+            <div class="time">{{ game.time }}</div>
+            <span class="home-away" :class="game.home ? 'tag-home' : 'tag-away'">
+              {{ game.home ? 'Home' : 'Away' }}
+            </span>
+          </div>
+        </div>
+      </div>
+    </template>
+  </div>
+</div>
+
+<script>
+const { createApp, computed, ref } = Vue;
+
+const TODAY = new Date();
+TODAY.setHours(0, 0, 0, 0);
+
+function parseGame(dateStr, timeStr, team, opponent, home, venue) {
+  const d = new Date(dateStr + 'T00:00:00');
+  const isPast = d < TODAY;
+  const isToday = d.getTime() === TODAY.getTime();
+  return {
+    id: `${team}-${dateStr}-${opponent}`,
+    team,
+    date: d,
+    dateStr,
+    dayNum: d.getDate(),
+    dayName: d.toLocaleDateString('en-US', { weekday: 'short' }),
+    monthShort: d.toLocaleDateString('en-US', { month: 'short' }),
+    monthGroup: d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+    time: timeStr,
+    matchup: home ? `vs. ${opponent}` : `@ ${opponent}`,
+    opponent,
+    home,
+    venue,
+    isPast,
+    isToday,
+  };
+}
+
+// Denver Summit FC — 2026 NWSL Season (all times MT)
+const summitGames = [
+  parseGame('2026-03-14', '4:30 PM MT', 'summit', 'Bay FC',                 false, 'PayPal Park, San Jose, CA'),
+  parseGame('2026-03-20', '6:00 PM MT', 'summit', 'Orlando Pride',           false, 'Inter&Co Stadium, Orlando, FL'),
+  parseGame('2026-03-25', '5:30 PM MT', 'summit', 'Gotham FC',               false, 'SI Stadium, Harrison, NJ'),
+  parseGame('2026-03-28', '12:00 PM MT','summit', 'Washington Spirit',        true,  'Empower Field at Mile High, Denver'),
+  parseGame('2026-04-04', '6:45 PM MT', 'summit', 'Seattle Reign',           false, 'ONE Spokane Stadium, Spokane, WA'),
+  parseGame('2026-04-25', '6:45 PM MT', 'summit', 'San Diego Wave FC',        true,  "DICK'S Sporting Goods Park, Commerce City"),
+  parseGame('2026-05-03', '1:00 PM MT', 'summit', 'Boston Legacy FC',        false, 'Gillette Stadium, Foxborough, MA'),
+  parseGame('2026-05-16', '6:45 PM MT', 'summit', 'Orlando Pride',            true,  "DICK'S Sporting Goods Park"),
+  parseGame('2026-07-03', '7:30 PM MT', 'summit', 'Kansas City Current',      true,  'Centennial Stadium, Denver'),
+  parseGame('2026-07-12', '5:00 PM MT', 'summit', 'Houston Dash',             true,  'Centennial Stadium, Denver'),
+  parseGame('2026-07-18', '12:00 PM MT','summit', 'Portland Thorns',          true,  'Centennial Stadium, Denver'),
+  parseGame('2026-08-02', '7:00 PM MT', 'summit', 'Boston Legacy FC',         true,  'Centennial Stadium, Denver'),
+  parseGame('2026-08-05', '8:00 PM MT', 'summit', 'North Carolina Courage',   true,  'Centennial Stadium, Denver'),
+  parseGame('2026-08-08', '2:00 PM MT', 'summit', 'Utah Royals',              true,  'Centennial Stadium, Denver'),
+  parseGame('2026-08-14', '7:00 PM MT', 'summit', 'San Diego Wave FC',        false, 'Snapdragon Stadium, San Diego, CA'),
+  parseGame('2026-09-19', '6:45 PM MT', 'summit', 'Seattle Reign FC',         true,  'Centennial Stadium, Denver'),
+  parseGame('2026-09-26', '11:30 AM MT','summit', 'Kansas City Current',      false, 'CPKC Stadium, Kansas City'),
+  parseGame('2026-10-04', '3:00 PM MT', 'summit', 'Chicago Stars',            false, 'Northwestern Medicine Field'),
+  parseGame('2026-10-17', '6:45 PM MT', 'summit', 'Angel City FC',            true,  'Centennial Stadium, Denver'),
+  parseGame('2026-10-24', '4:30 PM MT', 'summit', 'Racing Louisville FC',     true,  'Centennial Stadium, Denver'),
+  parseGame('2026-11-01', '5:00 PM MT', 'summit', 'North Carolina Courage',   false, 'First Horizon Stadium, Cary, NC'),
+];
+
+// STL City SC — 2026 MLS Season (times CT)
+const stlGames = [
+  parseGame('2026-02-21', '1:30 PM CT', 'stlcity', 'Charlotte FC',          true,  'Energizer Park, St. Louis'),
+  parseGame('2026-03-01', '3:00 PM CT', 'stlcity', 'San Diego FC',          false, 'Snapdragon Stadium, San Diego'),
+  parseGame('2026-03-08', '4:00 PM CT', 'stlcity', 'Seattle Sounders',      false, 'Lumen Field, Seattle'),
+  parseGame('2026-03-14', '7:00 PM CT', 'stlcity', 'LAFC',                  false, 'BMO Stadium, Los Angeles'),
+  parseGame('2026-03-21', '7:30 PM CT', 'stlcity', 'New England Revolution', true,  'Energizer Park, St. Louis'),
+  parseGame('2026-03-28', '7:00 PM CT', 'stlcity', 'NYCFC',                 false, 'Yankee Stadium, New York'),
+  parseGame('2026-04-04', '7:30 PM CT', 'stlcity', 'FC Dallas',             false, 'Toyota Stadium, Frisco'),
+  parseGame('2026-04-11', '8:00 PM CT', 'stlcity', 'Seattle Sounders',      false, 'Lumen Field, Seattle'),
+  parseGame('2026-04-18', '7:30 PM CT', 'stlcity', 'Inter Miami CF',        true,  'Energizer Park, St. Louis'),
+  parseGame('2026-04-25', '7:30 PM CT', 'stlcity', 'Sporting KC',           true,  'Energizer Park, St. Louis'),
+  parseGame('2026-05-02', '7:30 PM CT', 'stlcity', 'Austin FC',             true,  'Energizer Park, St. Louis'),
+  parseGame('2026-05-09', '7:30 PM CT', 'stlcity', 'Colorado Rapids',       false, 'Dick\'s Sporting Goods Park'),
+  parseGame('2026-05-16', '7:30 PM CT', 'stlcity', 'CF Montréal',           true,  'Energizer Park, St. Louis'),
+  parseGame('2026-05-23', '7:30 PM CT', 'stlcity', 'Austin FC',             true,  'Energizer Park, St. Louis'),
+  parseGame('2026-07-16', '7:30 PM CT', 'stlcity', 'Sporting KC',           true,  'Energizer Park, St. Louis'),
+  parseGame('2026-07-25', '7:30 PM CT', 'stlcity', 'Atlanta United',        true,  'Energizer Park, St. Louis'),
+  parseGame('2026-08-01', '7:30 PM CT', 'stlcity', 'New York Red Bulls',    false, 'Red Bull Arena, Harrison'),
+  parseGame('2026-08-08', '7:30 PM CT', 'stlcity', 'Columbus Crew',         true,  'Energizer Park, St. Louis'),
+  parseGame('2026-08-15', '7:30 PM CT', 'stlcity', 'Portland Timbers',      true,  'Energizer Park, St. Louis'),
+  parseGame('2026-08-22', '7:30 PM CT', 'stlcity', 'LA Galaxy',             false, 'Dignity Health Sports Park'),
+  parseGame('2026-08-29', '7:30 PM CT', 'stlcity', 'FC Cincinnati',         true,  'Energizer Park, St. Louis'),
+  parseGame('2026-09-12', '7:30 PM CT', 'stlcity', 'Nashville SC',          false, 'GEODIS Park, Nashville'),
+  parseGame('2026-09-19', '7:30 PM CT', 'stlcity', 'Minnesota United',      true,  'Energizer Park, St. Louis'),
+  parseGame('2026-09-26', '7:30 PM CT', 'stlcity', 'Chicago Fire',          false, 'Wrigley Field, Chicago'),
+  parseGame('2026-10-03', '7:30 PM CT', 'stlcity', 'Houston Dynamo',        true,  'Energizer Park, St. Louis'),
+  parseGame('2026-10-10', '7:30 PM CT', 'stlcity', 'Vancouver Whitecaps',   false, 'BC Place, Vancouver'),
+  parseGame('2026-10-17', '7:30 PM CT', 'stlcity', 'San Jose Earthquakes',  true,  'Energizer Park, St. Louis'),
+];
+
+const allGames = [...summitGames, ...stlGames].sort((a, b) => a.date - b.date);
+
+createApp({
+  setup() {
+    const filter = ref('all');
+
+    const filtered = computed(() => {
+      if (filter.value === 'all')     return allGames;
+      if (filter.value === 'home')    return allGames.filter(g => g.home);
+      return allGames.filter(g => g.team === filter.value);
+    });
+
+    const filteredGrouped = computed(() => {
+      const groups = {};
+      for (const game of filtered.value) {
+        const k = game.monthGroup;
+        if (!groups[k]) groups[k] = { month: k, games: [] };
+        groups[k].games.push(game);
+      }
+      return Object.values(groups);
+    });
+
+    return { filter, filteredGrouped };
+  }
+}).mount('#app');
+</script>
+</body>
+</html>
